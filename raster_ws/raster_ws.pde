@@ -68,11 +68,45 @@ void draw() {
   popMatrix();
 }
 
+//Funciones auxiliares
+float f_ab(float x, float y, Vector pa, Vector pb) {
+  return (pa.y() - pb.y()) * x + (pb.x() - pa.x()) * y + pa.x()*pb.y() - pb.x()*pa.y();
+}
+
+void colorearPixel(float pointx, float pointy) {
+  stroke(0,0,255);
+  point(pointx, pointy);
+}
+
+void rastrerizar() {
+  //Fuente: https://elcodigografico.wordpress.com/2014/03/29/coordenadas-baricentricas-en-triangulos/
+  Vector pv1 = frame.coordinatesOf(v1);
+  Vector pv2 = frame.coordinatesOf(v2);
+  Vector pv3 = frame.coordinatesOf(v3);
+  for (float x = -(pow(2,n-1));x<(pow(2,n-1));x++){
+    for (float y = -(pow(2,n-1));y<(pow(2,n-1)); y++){
+      float pointx = x + 0.5;
+      float pointy = y + 0.5;
+      
+      float alpha = f_ab(x, y, pv2, pv3) / f_ab(pv1.x(), pv1.y(), pv2, pv3);
+      float theta = f_ab(x, y, pv3, pv1) / f_ab(pv2.x(), pv2.y(), pv3, pv1);
+      float gamma = f_ab(x, y, pv1, pv2) / f_ab(pv3.x(), pv3.y(), pv1, pv2);
+      
+      if(alpha >= 0 &&  alpha <= 1 && theta >= 0 &&  theta <= 1 && gamma >= 0 &&  gamma <= 1)
+        colorearPixel(pointx, pointy);
+    }
+  }
+}
+
+
 // Implement this function to rasterize the triangle.
 // Coordinates are given in the frame system which has a dimension of 2^n
 void triangleRaster() {
   // frame.coordinatesOf converts from world to frame
   // here we convert v1 to illustrate the idea
+  
+  rastrerizar();
+  
   if (debug) {
     pushStyle();
     stroke(255, 255, 0, 125);
