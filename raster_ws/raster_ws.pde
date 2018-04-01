@@ -10,12 +10,14 @@ Vector v1, v2, v3;
 TimingTask spinningTask;
 boolean yDirection;
 // scaling is a power of 2
-int n = 4;
+int n = 6;
 
 // 2. Hints
 boolean triangleHint = true;
-boolean gridHint = true;
-boolean debug = true;
+boolean gridHint = false;
+boolean debug = false;
+boolean aliasing = true;
+boolean shading = true;
 
 // 3. Use FX2D, JAVA2D, P2D or P3D
 String renderer = P3D;
@@ -73,8 +75,13 @@ float f_ab(float x, float y, Vector pa, Vector pb) {
   return (pa.y() - pb.y()) * x + (pb.x() - pa.x()) * y + pa.x()*pb.y() - pb.x()*pa.y();
 }
 
-void colorearPixel(float pointx, float pointy) {
-  stroke(0,0,255);
+void colorearPixel(float pointx, float pointy, float trans) {
+  stroke(0,0,255,trans);
+  point(pointx, pointy);
+}
+
+void shadingPixel(float pointx, float pointy, float trans, float r, float g, float b) {
+  stroke(r*255,g*255,b*255,trans);
   point(pointx, pointy);
 }
 
@@ -85,19 +92,59 @@ void rastrerizar() {
   Vector pv3 = frame.coordinatesOf(v3);
   for (float x = -(pow(2,n-1));x<(pow(2,n-1));x++){
     for (float y = -(pow(2,n-1));y<(pow(2,n-1)); y++){
-      float pointx = x + 0.5;
-      float pointy = y + 0.5;
+      float pointx = x + 0.5; //0.5 significa el centro del cuadro
+      float pointy = y + 0.5; //0.5 significa el centro del cuadro
       
-      float alpha = f_ab(x, y, pv2, pv3) / f_ab(pv1.x(), pv1.y(), pv2, pv3);
-      float theta = f_ab(x, y, pv3, pv1) / f_ab(pv2.x(), pv2.y(), pv3, pv1);
-      float gamma = f_ab(x, y, pv1, pv2) / f_ab(pv3.x(), pv3.y(), pv1, pv2);
+      float alpha = f_ab(pointx, pointy, pv2, pv3) / f_ab(pv1.x(), pv1.y(), pv2, pv3);
+      float theta = f_ab(pointx, pointy, pv3, pv1) / f_ab(pv2.x(), pv2.y(), pv3, pv1);
+      float gamma = f_ab(pointx, pointy, pv1, pv2) / f_ab(pv3.x(), pv3.y(), pv1, pv2);
       
       if(alpha >= 0 &&  alpha <= 1 && theta >= 0 &&  theta <= 1 && gamma >= 0 &&  gamma <= 1)
-        colorearPixel(pointx, pointy);
+        if(shading)
+          shadingPixel(pointx, pointy, 200, alpha, theta, gamma);
+        else
+          colorearPixel(pointx, pointy,200);
     }
   }
 }
 
+void rastrerizarConAntiAliasing() {
+  
+  Vector pv1 = frame.coordinatesOf(v1);
+  Vector pv2 = frame.coordinatesOf(v2);
+  Vector pv3 = frame.coordinatesOf(v3);
+  for (float x = -(pow(2,n-1));x<(pow(2,n-1));x++){
+    for (float y = -(pow(2,n-1));y<(pow(2,n-1)); y++){
+      
+      float cont = 0f;
+      float pointx = x;
+      float pointy = y; 
+      float alpha = 0, theta = 0, gamma = 0;
+      
+      for(float i = 0.25; i < 1; i+=0.50) {
+        for(float j = 0.25; j < 1; j+=0.50) {
+            
+            pointx = x + i;
+            pointy = y + j; 
+            
+            alpha = f_ab(pointx, pointy, pv2, pv3) / f_ab(pv1.x(), pv1.y(), pv2, pv3);
+            theta = f_ab(pointx, pointy, pv3, pv1) / f_ab(pv2.x(), pv2.y(), pv3, pv1);
+            gamma = f_ab(pointx, pointy, pv1, pv2) / f_ab(pv3.x(), pv3.y(), pv1, pv2);
+            
+            if(alpha >= 0 &&  alpha <= 1 && theta >= 0 &&  theta <= 1 && gamma >= 0 &&  gamma <= 1)
+              cont++;
+        }
+      }
+      
+      if(cont>0 && cont<5) {
+        if(shading)
+          shadingPixel(pointx, pointy, (cont/4.0)*200, alpha, theta, gamma);
+        else
+          colorearPixel(pointx, pointy, (cont/4.0)*200);
+      }
+    }
+  }
+}
 
 // Implement this function to rasterize the triangle.
 // Coordinates are given in the frame system which has a dimension of 2^n
@@ -105,7 +152,10 @@ void triangleRaster() {
   // frame.coordinatesOf converts from world to frame
   // here we convert v1 to illustrate the idea
   
-  rastrerizar();
+  if(!aliasing)
+    rastrerizar();
+  else
+    rastrerizarConAntiAliasing();
   
   if (debug) {
     pushStyle();
@@ -168,4 +218,8 @@ void keyPressed() {
       spinningTask.run(20);
   if (key == 'y')
     yDirection = !yDirection;
+  if (key == 'a')
+    aliasing = !aliasing;
+  if (key == 's')
+    shading = !shading;
 }
